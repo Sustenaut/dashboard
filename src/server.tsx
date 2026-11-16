@@ -153,7 +153,9 @@ export function createHandler(config: Config, fetcher: typeof fetch = fetch, now
       const token = swapped.status === 200 ? swapped.body?.access_token : undefined;
       if (typeof token !== "string") {
         // GitHub's error code only (e.g. incorrect_client_credentials), never the code or a secret.
-        const why = typeof swapped.body?.error === "string" ? swapped.body.error : `HTTP ${swapped.status}`;
+        // Only a plain error code reaches the log (letters and _), so nothing from the answer can forge a line.
+        const code = typeof swapped.body?.error === "string" ? swapped.body.error : "";
+        const why = /^[a-z_]{1,64}$/.test(code) ? code : `HTTP ${Number(swapped.status) || 0}`;
         console.error(`dashboard: GitHub would not swap the sign-in code: ${why}`);
         return redirect(res, "/?error=exchange", { "set-cookie": clear });
       }

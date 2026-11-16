@@ -30,7 +30,7 @@ esac
 echo "== 1. The new credentials, checked with GitHub, into Bitwarden"
 version=$(sed -n 's|.*/pubsec/releases/download/v\([0-9.]*\)/pubsec-.*|\1|p' pubkit.json | head -n 1)
 wheel=$(find "${XDG_CACHE_HOME:-$HOME/.cache}/pubkit/providers" -name "pubsec-$version-py3-none-any.whl" | head -n 1)
-[ -n "$wheel" ] || { echo "   pubsec $version is not in the cache: run ./pubdeploy types once, then again."; exit 1; }
+[[ -n "$wheel" ]] || { echo "   pubsec $version is not in the cache: run ./pubdeploy types once, then again."; exit 1; }
 ./with-secrets uvx --from "$wheel" python scripts/rotate-credentials.py "$@"
 
 echo "== 2. The Secret dashboard-secrets made again from Bitwarden, and the app restarted"
@@ -41,7 +41,7 @@ ssh -o BatchMode=yes root@sustenaut "k3s kubectl -n dashboard delete secret dash
 ./with-secrets ./pubdeploy walk --fulfil --server sustenaut --zones ../shared-infra/pubkit.json
 
 echo "== 3. Clean up"
-if [ "${1:-}" = --secret-only ]; then
+if [[ "${1:-}" == --secret-only ]]; then
   echo "   On https://github.com/organizations/Sustenaut/settings/apps/sustenaut-reader-test delete"
   echo "   the old client secret."
 else
