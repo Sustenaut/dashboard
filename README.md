@@ -67,10 +67,10 @@ dashboard.sustenaut.eu's DNS record is Sustenaut/shared-infra's (`pubkit.json`, 
 pubkit.json's `deploy` block lists the rest, and `scripts/go-live.sh` takes it live once:
 
 1. `./pubsec github-app create github-app/reader-test.json` makes the app and writes
-   `dashboard-app-id`, `dashboard-app-key` and `dashboard-installation-id` to Bitwarden.
-2. It asks for the app's client id and a new client secret (pubsec keeps none) and writes
-   `dashboard-client-id` and `dashboard-client-secret`.
-3. The deploy walk generates `dashboard-session-secret`, makes the Secret `dashboard-secrets`,
+   `dashboard-app-id`, `dashboard-app-key`, `dashboard-installation-id`, `dashboard-client-id`
+   and `dashboard-client-secret` to Bitwarden, all from GitHub's answer (the manifest's
+   `keep_oauth_client`).
+2. The deploy walk generates `dashboard-session-secret`, makes the Secret `dashboard-secrets`,
    turns `DEPLOY_DASHBOARD` on and waits for the rollout and `/healthz`.
 
 Branch protection is `./pubkit protect Sustenaut/dashboard`.
