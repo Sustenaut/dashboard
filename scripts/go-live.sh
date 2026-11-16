@@ -48,9 +48,14 @@ if in_bitwarden dashboard-client-id && in_bitwarden dashboard-client-secret; the
   skip "dashboard-client-id and dashboard-client-secret are in Bitwarden"
 else
   echo "   pubsec keeps no client secret, so make one: open"
-  echo "   https://github.com/organizations/Sustenaut/settings/apps , choose the app, copy its Client ID"
-  echo "   and press \"Generate a new client secret\". Paste both at the hidden prompts below."
-  ask "Ready to paste them?"
+  echo "   https://github.com/organizations/Sustenaut/settings/apps/sustenaut-reader-test , copy its"
+  echo "   Client ID and press \"Generate a new client secret\"."
+  echo "   Three hidden prompts follow, in this order:"
+  echo "     1. your Bitwarden access token with write access to Sustenaut (0.<id>.<secret>:<key>),"
+  echo "        the same one step 1 took; not the client id"
+  echo "     2. the app's Client ID (Iv23...)"
+  echo "     3. the client secret you just generated"
+  ask "Ready, with the Bitwarden token first?"
   version=$(sed -n 's|.*/pubsec/releases/download/v\([0-9.]*\)/pubsec-.*|\1|p' pubkit.json | head -n 1)
   wheel=$(find "${XDG_CACHE_HOME:-$HOME/.cache}/pubkit/providers" -name "pubsec-$version-py3-none-any.whl" | head -n 1)
   [ -n "$wheel" ] || { echo "   pubsec $version is not in the cache: run ./pubdeploy types once, then again."; exit 1; }
@@ -60,12 +65,14 @@ from pubsec.bitwarden import WriteFailed, ensure, names, write
 from pubsec.github_app import Plan, ask_hidden, project_id
 if why := ensure():  # fetches the Bitwarden SDK, which the pubsec wheel alone does not bring
     sys.exit(f"go-live: {why}")
-token = ask_hidden("Bitwarden access token with write access to Sustenaut (hidden, not kept): ")
+token = ask_hidden("1 of 3, Bitwarden access token with write access to Sustenaut (hidden, not kept): ")
 if not token:
     sys.exit("go-live: no token, nothing written")
+if not (token.startswith("0.") and ":" in token):
+    sys.exit("go-live: that is not a Bitwarden access token (0.<id>.<secret>:<key>); the client id comes next. Nothing written: run it again")
 project, organization = project_id(token, Plan({}, "Sustenaut", True, "Sustenaut", "dashboard"))
 have = names(token, organization, project)
-for name, prompt in (("dashboard-client-id", "Client ID: "), ("dashboard-client-secret", "Client secret: ")):
+for name, prompt in (("dashboard-client-id", "2 of 3, the app Client ID: "), ("dashboard-client-secret", "3 of 3, the client secret: ")):
     if name in have:
         print(f"   already in Bitwarden: {name}")
         continue
