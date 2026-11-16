@@ -56,8 +56,10 @@ else
   [ -n "$wheel" ] || { echo "   pubsec $version is not in the cache: run ./pubdeploy types once, then again."; exit 1; }
   uvx --from "$wheel" python -c '
 import sys
-from pubsec.bitwarden import WriteFailed, names, write
+from pubsec.bitwarden import WriteFailed, ensure, names, write
 from pubsec.github_app import Plan, ask_hidden, project_id
+if why := ensure():  # fetches the Bitwarden SDK, which the pubsec wheel alone does not bring
+    sys.exit(f"go-live: {why}")
 token = ask_hidden("Bitwarden access token with write access to Sustenaut (hidden, not kept): ")
 if not token:
     sys.exit("go-live: no token, nothing written")
