@@ -151,7 +151,12 @@ export function createHandler(config: Config, fetcher: typeof fetch = fetch, now
         return redirect(res, "/?error=state", { "set-cookie": clear });
       const swapped = await gh.exchangeCode(config.clientId, config.clientSecret, code, callback);
       const token = swapped.status === 200 ? swapped.body?.access_token : undefined;
-      if (typeof token !== "string") return redirect(res, "/?error=exchange", { "set-cookie": clear });
+      if (typeof token !== "string") {
+        // GitHub's error code only (e.g. incorrect_client_credentials), never the code or a secret.
+        const why = typeof swapped.body?.error === "string" ? swapped.body.error : `HTTP ${swapped.status}`;
+        console.error(`dashboard: GitHub would not swap the sign-in code: ${why}`);
+        return redirect(res, "/?error=exchange", { "set-cookie": clear });
+      }
       const me = await gh.call("GET", "/user", { kind: "user", token });
       if (me.status !== 200 || typeof me.body?.login !== "string")
         return redirect(res, "/?error=user", { "set-cookie": clear });
