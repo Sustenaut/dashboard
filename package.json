@@ -18,7 +18,7 @@
     "test": "npm run typecheck && npm run check-format && npm run scenarios"
   },
   "dependencies": {
-    "@sustenaut/ui": "github:Sustenaut/ui#d95095207b649ca1dd731ef65288f14fda7379d0",
+    "@sustenaut/ui": "github:Sustenaut/ui#v0.1.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-hook-form": "^7.91.0"
