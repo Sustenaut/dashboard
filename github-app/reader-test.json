@@ -1,0 +1,22 @@
+{
+  "name": "Sustenaut reader (test)",
+  "url": "https://dashboard.sustenaut.eu",
+  "description": "Phase 0 proof of concept: reads an organization's plan, Actions minutes, storage, 2FA requirement and ruleset support for dashboard.sustenaut.eu. Organization permissions only, read only; it never reads a repository.",
+  "public": true,
+  "callback_urls": ["https://dashboard.sustenaut.eu/auth/callback"],
+  "setup_url": "https://dashboard.sustenaut.eu/setup",
+  "setup_on_update": true,
+  "request_oauth_on_install": false,
+  "hook_attributes": { "url": "https://dashboard.sustenaut.eu/hooks", "active": false },
+  "default_permissions": {
+    "organization_administration": "read",
+    "organization_plan": "read",
+    "members": "read"
+  },
+  "default_events": [],
+  "pubkit": {
+    "org": "Sustenaut",
+    "bitwarden_project": "Sustenaut",
+    "secret_prefix": "dashboard"
+  }
+}

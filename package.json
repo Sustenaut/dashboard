@@ -1,0 +1,48 @@
+{
+  "name": "@sustenaut/dashboard",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "dashboard.sustenaut.eu: sign in with GitHub, link an organization, see what Sustenaut can read about it. Phase 0 proof of concept.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node dist/server.mjs",
+    "typecheck": "tsc --noEmit -p .",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"features/**/*.ts\" scripts/*.mjs",
+    "check-format": "prettier --check \"src/**/*.{ts,tsx,css}\" \"features/**/*.ts\" scripts/*.mjs",
+    "scenarios": "NODE_OPTIONS=--import=tsx c8 --reporter=text-summary --reporter=lcov --report-dir=coverage --include=src/** cucumber-js",
+    "test": "npm run typecheck && npm run check-format && npm run scenarios"
+  },
+  "dependencies": {
+    "@sustenaut/ui": "github:Sustenaut/ui#d95095207b649ca1dd731ef65288f14fda7379d0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-hook-form": "^7.91.0"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "13.3.0",
+    "@tailwindcss/cli": "^4.3.3",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.3.0",
+    "c8": "^10.1.3",
+    "esbuild": "^0.25.12",
+    "prettier": "^3.9.9",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sustenaut/dashboard.git"
+  },
+  "overrides": {
+    "glob": "14.0.6",
+    "minimatch": "11.0.8"
+  }
+}

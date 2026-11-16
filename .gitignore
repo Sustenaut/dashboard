@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+.pubkit/
+# Local secrets, such as the Bitwarden token ./with-secrets reads: never committed.
+.env
