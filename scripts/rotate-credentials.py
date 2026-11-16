@@ -6,6 +6,7 @@ printed), and checked by signing the app's JWT with it and asking GitHub for the
 secret is asked for at a hidden prompt, must be 40 hex characters, and is checked by sending it
 with the client id and a code that is not real: GitHub answers bad_verification_code when the
 pair is right. The Bitwarden write token is asked for once. Nothing is written unless both pass.
+With --secret-only the key is left as it is, and only the client secret is asked for and written.
 """
 
 from __future__ import annotations
@@ -45,7 +46,34 @@ def main() -> int:
     if why := ensure():
         stop(why)
     ask = github_app.ask_hidden
+    secret_only = "--secret-only" in sys.argv[1:]
+    total = 2 if secret_only else 3
+    pem = None
+    if not secret_only:
+        pem = read_key(app_id)
+    secret = ask(f"{total - 1} of {total}, the new client secret (40 hex characters; not the key): ")
+    check_secret(client_id, secret)
 
+    token = ask(f"{total} of {total}, Bitwarden access token with write access to {PROJECT} (hidden, not kept): ")
+    if not (token.startswith("0.") and ":" in token):
+        stop("that is not a Bitwarden access token (0.<id>.<secret>:<key>)")
+    project, organization = github_app.project_id(token, github_app.Plan({}, PROJECT, True, PROJECT, "dashboard"))
+    have = names(token, organization, project)
+    writes = (("dashboard-client-secret", secret),) if pem is None else (("dashboard-app-key", pem), ("dashboard-client-secret", secret))
+    for name, value in writes:
+        ids = have.get(name, [])
+        if len(ids) > 1:
+            sys.exit(f"rotate-credentials: {len(ids)} secrets are named {name}; delete the extra ones in Bitwarden, then run it again")
+        try:
+            write(token, organization, project, name, value, "Sustenaut reader (test), for dashboard.sustenaut.eu", ids[0] if ids else None)
+        except WriteFailed as error:
+            sys.exit(f"rotate-credentials: {name} not written: {error}")
+        print(f"   {'replaced' if ids else 'wrote'} {name} in Bitwarden")
+    return 0
+
+
+def read_key(app_id: str) -> str:
+    """The new key, from the .pem GitHub downloaded, once GitHub accepts a JWT it signs."""
     path = Path(input("1 of 3, path of the new .pem file GitHub downloaded: ").strip()).expanduser()
     try:
         pem = path.read_text(encoding="ascii")
@@ -60,8 +88,10 @@ def main() -> int:
     if str(app.get("id")) != app_id:
         stop(f"the key is app {app.get('id')}'s, not the dashboard's ({app_id})")
     print(f"   GitHub accepts the new key for {app.get('slug')}.")
+    return pem
 
-    secret = ask("2 of 3, the new client secret (40 hex characters; not the key): ")
+
+def check_secret(client_id: str, secret: str) -> None:
     if secret.startswith("-----"):
         stop("that is a key, not a client secret")
     if not re.fullmatch(r"[0-9a-f]{40}", secret):
@@ -69,22 +99,6 @@ def main() -> int:
     if (said := client_check(client_id, secret)) != "bad_verification_code":
         stop(f"GitHub did not accept the client secret with client id {client_id[:4]}... ({said})")
     print("   GitHub accepts the client id with the new secret.")
-
-    token = ask(f"3 of 3, Bitwarden access token with write access to {PROJECT} (hidden, not kept): ")
-    if not (token.startswith("0.") and ":" in token):
-        stop("that is not a Bitwarden access token (0.<id>.<secret>:<key>)")
-    project, organization = github_app.project_id(token, github_app.Plan({}, PROJECT, True, PROJECT, "dashboard"))
-    have = names(token, organization, project)
-    for name, value in (("dashboard-app-key", pem), ("dashboard-client-secret", secret)):
-        ids = have.get(name, [])
-        if len(ids) > 1:
-            sys.exit(f"rotate-credentials: {len(ids)} secrets are named {name}; delete the extra ones in Bitwarden, then run it again")
-        try:
-            write(token, organization, project, name, value, "Sustenaut reader (test), for dashboard.sustenaut.eu", ids[0] if ids else None)
-        except WriteFailed as error:
-            sys.exit(f"rotate-credentials: {name} not written: {error}")
-        print(f"   {'replaced' if ids else 'wrote'} {name} in Bitwarden")
-    return 0
 
 
 if __name__ == "__main__":
