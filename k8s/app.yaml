@@ -1,0 +1,69 @@
+# The dashboard (../Dockerfile): signs people in with the GitHub App "Sustenaut reader (test)"
+# and reads the orgs they install it on. It keeps nothing: the session is a sealed cookie. The
+# app's id and key, its OAuth client and the session secret come from the Secret
+# dashboard-secrets, which the deploy walk fills from Bitwarden (dashboard-* secrets).
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+spec:
+  selector:
+    app: dashboard
+  ports:
+    - name: http
+      port: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      serviceAccountName: app # service-accounts.yaml: no RBAC, no API token
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: app
+          image: ghcr.io/sustenaut/dashboard
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: DASHBOARD_PUBLIC_URL
+              value: https://dashboard.sustenaut.eu
+            - name: DASHBOARD_APP_ID
+              valueFrom: { secretKeyRef: { name: dashboard-secrets, key: app-id } }
+            - name: DASHBOARD_APP_KEY
+              valueFrom: { secretKeyRef: { name: dashboard-secrets, key: app-key } }
+            - name: DASHBOARD_CLIENT_ID
+              valueFrom: { secretKeyRef: { name: dashboard-secrets, key: client-id } }
+            - name: DASHBOARD_CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: dashboard-secrets, key: client-secret } }
+            - name: DASHBOARD_SESSION_SECRET
+              valueFrom: { secretKeyRef: { name: dashboard-secrets, key: session-secret } }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi

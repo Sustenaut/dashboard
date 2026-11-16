@@ -1,0 +1,8 @@
+/* The dashboard's stylesheet: Tailwind, the Sustenaut tokens and @sustenaut/ui's classes
+   (theme.css tells Tailwind to scan the library), and this app's pages. The fonts are copied
+   beside the built file (scripts/build.mjs). */
+@import "tailwindcss";
+@import "@sustenaut/ui/theme.css";
+@import "@sustenaut/theme/fonts.css";
+
+@source "./pages";

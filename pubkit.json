@@ -1,0 +1,111 @@
+{
+  "kind": "service",
+  "ci": {
+    "with": {
+      "setup": "npm ci --ignore-scripts",
+      "test": "npm test",
+      "coverage-report": "coverage/lcov.info",
+      "shellcheck": "with-secrets scripts/*.sh"
+    }
+  },
+  "protect": {
+    "checks": [
+      "ci / passed",
+      "integrations / scan"
+    ],
+    "tags": false
+  },
+  "secrets": [
+    {
+      "from": "sustenaut-deploy-ssh-key",
+      "to": "SUSTENAUT_DEPLOY_SSH_KEY",
+      "kind": "secret"
+    },
+    {
+      "from": "TS_GH_OAUTH_CLIENT_ID",
+      "to": "TS_GH_OAUTH_CLIENT_ID",
+      "kind": "secret"
+    },
+    {
+      "from": "TS_GH_OAUTH_SECRET",
+      "to": "TS_GH_OAUTH_SECRET",
+      "kind": "secret"
+    },
+    {
+      "from": "sustenaut-server",
+      "to": "SUSTENAUT_SERVER",
+      "kind": "variable"
+    },
+    {
+      "from": "sustenaut-known-hosts",
+      "to": "SUSTENAUT_KNOWN_HOSTS",
+      "kind": "variable"
+    }
+  ],
+  "deploy": {
+    "providers": [
+      {
+        "distribution": "pubdeploy",
+        "wheel": "https://github.com/Sustenaut/pubdeploy/releases/download/v0.4.3/pubdeploy-0.4.3-py3-none-any.whl",
+        "sha256": "acec4f9e914c58ab0ed29aced6096b2b55262384f9dd4865d02fcb8cb3f8b3be"
+      },
+      {
+        "distribution": "pubsec",
+        "wheel": "https://github.com/Sustenaut/pubsec/releases/download/v0.2.3/pubsec-0.2.3-py3-none-any.whl",
+        "sha256": "4a0b9435ff111565265f330fa3a1642b59562d77b5d1806c1bfecfe83e63b106"
+      }
+    ],
+    "namespace": "dashboard",
+    "host": "dashboard.sustenaut.eu",
+    "workflow": "deploy.yml",
+    "gate": "DEPLOY_DASHBOARD",
+    "needs": [
+      {
+        "type": "bitwarden.secret",
+        "name": "dashboard-app-id",
+        "secret": {
+          "name": "dashboard-secrets",
+          "key": "app-id"
+        }
+      },
+      {
+        "type": "bitwarden.secret",
+        "name": "dashboard-app-key",
+        "secret": {
+          "name": "dashboard-secrets",
+          "key": "app-key"
+        }
+      },
+      {
+        "type": "bitwarden.secret",
+        "name": "dashboard-client-id",
+        "secret": {
+          "name": "dashboard-secrets",
+          "key": "client-id"
+        }
+      },
+      {
+        "type": "bitwarden.secret",
+        "name": "dashboard-client-secret",
+        "secret": {
+          "name": "dashboard-secrets",
+          "key": "client-secret"
+        }
+      },
+      {
+        "type": "bitwarden.generated",
+        "name": "dashboard-session-secret",
+        "shape": "base64-32",
+        "secret": {
+          "name": "dashboard-secrets",
+          "key": "session-secret"
+        }
+      }
+    ]
+  },
+  "mirror": {
+    "wheels": "https://storage.sustenaut.eu/wheels",
+    "terraform": "https://storage.sustenaut.eu/terraform",
+    "pypi": "https://storage.sustenaut.eu/pypi"
+  }
+}
