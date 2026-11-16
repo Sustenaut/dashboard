@@ -31,60 +31,36 @@ git fetch -q origin main
 [ -f ../shared-infra/pubkit.json ] || { echo "   ../shared-infra is missing: the walk reads its hosting block."; exit 1; }
 grep -q '"dashboard"' ../shared-infra/pubkit.json || { echo "   ../shared-infra has no dashboard site yet: merge and apply its DNS PR, then git latest there."; exit 1; }
 
-step "1. The GitHub App, its key and its installation id in Bitwarden"
+step "1-2. The GitHub App and its OAuth client, in Bitwarden (dashboard-* secrets)"
+# One process for both steps, so the Bitwarden write token is asked for once
+# (scripts/go-live-secrets.py): it stays in that process's memory, never in this shell.
+args=()
 if in_bitwarden dashboard-app-id && in_bitwarden dashboard-app-key; then
   skip "dashboard-app-id and dashboard-app-key are in Bitwarden"
 else
-  echo "   ./pubsec github-app create $manifest makes the app (owned by Sustenaut, public, organization"
-  echo "   permissions Administration, Plan and Members read; no repository permission), asks you to"
-  echo "   install it on Sustenaut, and writes dashboard-app-id, dashboard-app-key and"
-  echo "   dashboard-installation-id. It asks for a Bitwarden token that may write to Sustenaut."
-  ask "Make the app?"
-  ./pubsec github-app create "$manifest"
+  echo "   Step 1: pubsec github-app create $manifest makes the app (owned by Sustenaut, public,"
+  echo "   organization permissions Administration, Plan and Members read; no repository permission),"
+  echo "   asks you to install it on Sustenaut, and writes dashboard-app-id, dashboard-app-key and"
+  echo "   dashboard-installation-id."
+  args+=(--app "$manifest")
 fi
-
-step "2. The app's OAuth client: dashboard-client-id and dashboard-client-secret"
 if in_bitwarden dashboard-client-id && in_bitwarden dashboard-client-secret; then
   skip "dashboard-client-id and dashboard-client-secret are in Bitwarden"
 else
-  echo "   pubsec keeps no client secret, so make one: open"
-  echo "   https://github.com/organizations/Sustenaut/settings/apps/sustenaut-reader-test , copy its"
-  echo "   Client ID and press \"Generate a new client secret\"."
-  echo "   Three hidden prompts follow, in this order:"
-  echo "     1. your Bitwarden access token with write access to Sustenaut (0.<id>.<secret>:<key>),"
-  echo "        the same one step 1 took; not the client id"
-  echo "     2. the app's Client ID (Iv23...)"
-  echo "     3. the client secret you just generated"
-  ask "Ready, with the Bitwarden token first?"
+  echo "   Step 2: pubsec keeps no client secret, so make one on"
+  echo "   https://github.com/organizations/Sustenaut/settings/apps/sustenaut-reader-test : copy its"
+  echo "   Client ID and press \"Generate a new client secret\". Both are asked for after step 1."
+  args+=(--client)
+fi
+if [ ${#args[@]} -gt 0 ]; then
+  echo "   First, once for both steps: your Bitwarden access token with write access to Sustenaut"
+  echo "   (0.<id>.<secret>:<key>), at a hidden prompt. It is not the client id."
+  ask "Go on?"
   version=$(sed -n 's|.*/pubsec/releases/download/v\([0-9.]*\)/pubsec-.*|\1|p' pubkit.json | head -n 1)
   wheel=$(find "${XDG_CACHE_HOME:-$HOME/.cache}/pubkit/providers" -name "pubsec-$version-py3-none-any.whl" | head -n 1)
   [ -n "$wheel" ] || { echo "   pubsec $version is not in the cache: run ./pubdeploy types once, then again."; exit 1; }
-  uvx --from "$wheel" python -c '
-import sys
-from pubsec.bitwarden import WriteFailed, ensure, names, write
-from pubsec.github_app import Plan, ask_hidden, project_id
-if why := ensure():  # fetches the Bitwarden SDK, which the pubsec wheel alone does not bring
-    sys.exit(f"go-live: {why}")
-token = ask_hidden("1 of 3, Bitwarden access token with write access to Sustenaut (hidden, not kept): ")
-if not token:
-    sys.exit("go-live: no token, nothing written")
-if not (token.startswith("0.") and ":" in token):
-    sys.exit("go-live: that is not a Bitwarden access token (0.<id>.<secret>:<key>); the client id comes next. Nothing written: run it again")
-project, organization = project_id(token, Plan({}, "Sustenaut", True, "Sustenaut", "dashboard"))
-have = names(token, organization, project)
-for name, prompt in (("dashboard-client-id", "2 of 3, the app Client ID: "), ("dashboard-client-secret", "3 of 3, the client secret: ")):
-    if name in have:
-        print(f"   already in Bitwarden: {name}")
-        continue
-    value = ask_hidden(prompt)
-    if not value:
-        sys.exit(f"go-live: no {name}, stopped")
-    try:
-        write(token, organization, project, name, value, "Sustenaut reader (test) OAuth client, for dashboard.sustenaut.eu")
-    except WriteFailed as error:
-        sys.exit(f"go-live: {name} not written: {error}")
-    print(f"   wrote {name} ({len(value)} characters)")
-'
+  command -v bws >/dev/null || { echo "   bws is not installed: https://github.com/bitwarden/sdk-sm/releases"; exit 1; }
+  uvx --from "$wheel" python scripts/go-live-secrets.py "${args[@]}"
 fi
 
 step "3. The deploy walk: session secret, Secret dashboard-secrets, DEPLOY_DASHBOARD, rollout"
