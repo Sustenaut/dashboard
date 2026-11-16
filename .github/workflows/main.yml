@@ -13,7 +13,7 @@ jobs:
   # jobs it ran are skipped, and nothing here tests less than it did.
   tested:
     name: ci
-    uses: Sustenaut/pubkit/.github/workflows/job-tested.yml@1718fa75ff93da1977850bdbad8dba0097abae7f # v0.41.0
+    uses: Sustenaut/pubkit/.github/workflows/job-tested.yml@f6ee457d1d049d72b3cdd0675c7903fea47bbbaf # v0.41.1
     with: {"workflow": ".github/workflows/pr.yml"}
     permissions:
       actions: read
@@ -23,21 +23,21 @@ jobs:
     name: ci
     needs: [tested]
     if: ${{ needs.tested.outputs.tested != 'true' }}
-    uses: Sustenaut/pubkit/.github/workflows/job-service-checks.yml@1718fa75ff93da1977850bdbad8dba0097abae7f # v0.41.0
+    uses: Sustenaut/pubkit/.github/workflows/job-service-checks.yml@f6ee457d1d049d72b3cdd0675c7903fea47bbbaf # v0.41.1
     with: {"shellcheck": "with-secrets scripts/*.sh"}
 
   tests:
     name: ci
     needs: [tested]
     if: ${{ needs.tested.outputs.tested != 'true' }}
-    uses: Sustenaut/pubkit/.github/workflows/job-service-tests.yml@1718fa75ff93da1977850bdbad8dba0097abae7f # v0.41.0
+    uses: Sustenaut/pubkit/.github/workflows/job-service-tests.yml@f6ee457d1d049d72b3cdd0675c7903fea47bbbaf # v0.41.1
     with: {"setup": "npm ci --ignore-scripts", "test": "npm test", "coverage-report": "coverage/lcov.info"}
 
   sonar:
     name: ci
     needs: [tested, tests]
     if: ${{ !failure() && !cancelled() }}
-    uses: Sustenaut/pubkit/.github/workflows/job-sonar.yml@1718fa75ff93da1977850bdbad8dba0097abae7f # v0.41.0
+    uses: Sustenaut/pubkit/.github/workflows/job-sonar.yml@f6ee457d1d049d72b3cdd0675c7903fea47bbbaf # v0.41.1
     permissions:
       actions: read
       contents: read

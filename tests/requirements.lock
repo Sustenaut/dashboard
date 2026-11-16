@@ -258,8 +258,8 @@ pluggy==1.7.0 \
     --hash=sha256:d1eaa46ebb595891b860ab086b4d09c8588af65ebd4361b8e8f4bb8920b90ba8
 pubdeploy @ https://github.com/Sustenaut/pubdeploy/releases/download/v0.4.3/pubdeploy-0.4.3-py3-none-any.whl \
     --hash=sha256:acec4f9e914c58ab0ed29aced6096b2b55262384f9dd4865d02fcb8cb3f8b3be
-pubkit @ https://github.com/Sustenaut/pubkit/releases/download/v0.41.0/pubkit-0.41.0-py3-none-any.whl \
-    --hash=sha256:58e6db3c241f08019843b57d9f23bb110ce6abb2206902a5b10bf83c563c0f2e
+pubkit @ https://github.com/Sustenaut/pubkit/releases/download/v0.41.1/pubkit-0.41.1-py3-none-any.whl \
+    --hash=sha256:2806ab70b2b64b720f13df5499ea4f7effadf7dda757029fec4e6dec37ecd8d7
 pubsec @ https://github.com/Sustenaut/pubsec/releases/download/v0.2.3/pubsec-0.2.3-py3-none-any.whl \
     --hash=sha256:4a0b9435ff111565265f330fa3a1642b59562d77b5d1806c1bfecfe83e63b106
 Pygments==2.21.0 \
