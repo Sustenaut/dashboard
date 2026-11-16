@@ -11,6 +11,7 @@ pubsec wheel pubkit.json's deploy.providers pins (go-live.sh does that).
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -49,13 +50,19 @@ def main(argv: list[str]) -> int:
         project, organization = github_app.project_id(token, github_app.Plan({}, PROJECT, True, PROJECT, "dashboard"))
         have = names(token, organization, project)
         for name, prompt in (("dashboard-client-id", "The app's Client ID (Iv23...): "),
-                             ("dashboard-client-secret", "The client secret: ")):
+                             ("dashboard-client-secret", "The client secret (40 hex characters; not the key): ")):
             if name in have:
                 print(f"   already in Bitwarden: {name}")
                 continue
             value = ask(prompt)
             if not value:
                 sys.exit(f"go-live: no {name}, stopped")
+            if value.startswith("-----"):
+                sys.exit(f"go-live: that is a key, not the {name.removeprefix('dashboard-')}. Nothing more written: run it again")
+            if name == "dashboard-client-secret" and not re.fullmatch(r"[0-9a-f]{40}", value):
+                sys.exit(f"go-live: that is {len(value)} characters, not a client secret (40 hex). Nothing more written: run it again")
+            if name == "dashboard-client-id" and not re.fullmatch(r"Iv[0-9A-Za-z.]{10,40}", value):
+                sys.exit("go-live: that is not a GitHub App client id (Iv...). Nothing more written: run it again")
             try:
                 write(token, organization, project, name, value,
                       "Sustenaut reader (test) OAuth client, for dashboard.sustenaut.eu")
