@@ -1,4 +1,4 @@
-import { Callout, DataTable, Disclosure, Meter, Stat, StepList, Tag } from "@sustenaut/ui";
+import { Callout, DataTable, Disclosure, Stat, StepList, Tag } from "@sustenaut/ui";
 import { readBy, shown, type Field, type Reading, type Report } from "../probes";
 import { Page, Preview, Works, type User } from "./layout";
 
@@ -17,6 +17,7 @@ export type WizardState = {
 const button =
   "inline-flex min-h-11 items-center rounded-control bg-primary px-4.5 font-bold text-on-primary no-underline";
 const n = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
+const fine = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 3 });
 
 const text = (r?: Reading) =>
   r?.value === undefined
@@ -50,8 +51,20 @@ function Readings({ report }: { report: Report }) {
   const get = (k: Field["key"]) => report.fields.find((f) => f.key === k)!;
   const plan = shown(get("plan"));
   const rules = shown(get("rulesets"));
-  const minutes = [num(get("minutesUsed")), num(get("minutesIncluded"))];
-  const storage = [num(get("storageUsed")), num(get("storageIncluded"))];
+  const minutes = {
+    used: num(get("minutesUsed")),
+    billed: num(get("minutesBilled")),
+    included: num(get("minutesIncluded")),
+  };
+  const storage = {
+    used: num(get("storageUsed")),
+    billed: num(get("storageBilled")),
+    included: num(get("storageIncluded")),
+  };
+  const free = (amount: number | undefined, unit: string) =>
+    amount === undefined
+      ? "Public repos are free."
+      : `Public repos are free; private repos get ${n.format(amount)} ${unit} a month.`;
   return (
     <div className="flex flex-col gap-3.5">
       <h3 className="m-0 font-display text-lg font-extrabold">What we read from {report.org}</h3>
@@ -66,15 +79,43 @@ function Readings({ report }: { report: Report }) {
           value={rules?.value === undefined ? "—" : rules.value ? "Yes" : "Not on this plan"}
         />
       </div>
-      {minutes[0] !== undefined && minutes[1] !== undefined ? (
-        <Meter label="Actions minutes this month" used={minutes[0]} total={minutes[1]} format={(v) => n.format(v)} />
+      {minutes.used !== undefined && minutes.billed !== undefined ? (
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <Stat
+            label="Actions minutes this month, all repos"
+            value={n.format(minutes.used)}
+            note={free(minutes.included, "minutes")}
+          />
+          <Stat
+            label="Actions minutes billed this month"
+            value={n.format(minutes.billed)}
+            note="What is left after GitHub's free minutes"
+          />
+        </div>
       ) : (
         <Callout tone="warning">Actions minutes: not readable either way (see Diagnostics).</Callout>
       )}
-      {storage[0] !== undefined && storage[1] !== undefined ? (
-        <Meter label="Packages and Actions storage" used={storage[0]} total={storage[1]} unit="GB" />
+      {storage.used !== undefined && storage.billed !== undefined ? (
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <Stat
+            label="Packages and Actions storage this month"
+            value={`${n.format(storage.used)} GB`}
+            note={free(storage.included, "GB")}
+          />
+          <Stat
+            label="Storage billed this month"
+            value={`${fine.format(storage.billed)} GB-hours`}
+            note="What is left after GitHub's free storage"
+          />
+        </div>
       ) : (
         <Callout tone="warning">Storage: not readable either way (see Diagnostics).</Callout>
+      )}
+      {(minutes.billed ?? 0) > 0 && (
+        <Callout tone="warning">
+          GitHub is billing {n.format(minutes.billed!)} Actions minutes this month. Add our runners, or check your
+          spending limit on GitHub.
+        </Callout>
       )}
       {rules?.value === false && (
         <Callout tone="warning">

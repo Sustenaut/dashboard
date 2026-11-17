@@ -25,8 +25,6 @@ Given("the reader app is installed on {string}", function (this: Dashboard, org:
 });
 
 const orgPath = "/orgs/Visit-ee";
-const billing = (kind: string) => `/orgs/Visit-ee/settings/billing/${kind}`;
-const usagePath = "/organizations/Visit-ee/settings/billing/usage";
 
 Given("way A reads the org as plan {string} with 2FA required", function (this: Dashboard, plan: string) {
   for (const way of ["A", "B"] as const)
@@ -43,46 +41,53 @@ Given("way A reads the org as plan {string} with 2FA not required", function (th
   });
 });
 
+const summaryPath = "/organizations/Visit-ee/settings/billing/usage/summary";
+const summaryItems = (w: Dashboard): any[] => {
+  const canned = w.github.answers.A.get(summaryPath);
+  const items = (canned?.body as any)?.usageItems ?? [];
+  w.github.answers.A.set(summaryPath, { status: 200, body: { usageItems: items } });
+  return items;
+};
+const sku = (sku: string, unitType: string, gross: number, net: number) => ({
+  product: "Actions",
+  sku,
+  unitType,
+  grossQuantity: gross,
+  discountQuantity: gross - net,
+  netQuantity: net,
+});
+
 Given(
-  "way A reads the legacy Actions billing as {int} of {int} minutes",
-  function (this: Dashboard, used: number, included: number) {
-    this.github.answers.A.set(billing("actions"), {
-      status: 200,
-      body: { total_minutes_used: used, included_minutes: included },
+  "way A reads this month's summary as {int} Actions minutes, {int} billed",
+  function (this: Dashboard, gross: number, net: number) {
+    summaryItems(this).push(sku("actions_linux", "minutes", gross, net), {
+      product: "Copilot",
+      unitType: "user-months",
+      grossQuantity: 3,
+      netQuantity: 3,
     });
   },
 );
 
-Given("way A reads the legacy storage billing as {float} GB", function (this: Dashboard, gb: number) {
-  this.github.answers.A.set(billing("shared-storage"), { status: 200, body: { estimated_storage_for_month: gb } });
-});
+Given(
+  "way A reads this month's summary as {int} Actions minutes, {int} billed, over three runners",
+  function (this: Dashboard, gross: number, net: number) {
+    const items = summaryItems(this);
+    items.push(sku("actions_linux", "minutes", gross - 747, net), sku("actions_windows", "minutes", 415, 0));
+    items.push(sku("actions_macos", "Minutes", 332, 0));
+  },
+);
+
+Given(
+  "way A reads this month's storage as {float} GB-hours, {float} billed",
+  function (this: Dashboard, gross: number, net: number) {
+    summaryItems(this).push(sku("actions_storage", "gigabyte-hours", gross, net));
+  },
+);
 
 Given("way B is refused the org's billing with HTTP {int}", function (this: Dashboard, status: number) {
-  for (const p of [billing("actions"), billing("shared-storage"), usagePath])
-    this.github.answers.B.set(p, { status, body: { message: "Resource not accessible by integration" } });
+  this.github.answers.B.set(summaryPath, { status, body: { message: "Resource not accessible by integration" } });
 });
-
-Given("way A's legacy billing endpoints answer HTTP {int}", function (this: Dashboard, status: number) {
-  for (const p of [billing("actions"), billing("shared-storage")])
-    this.github.answers.A.set(p, { status, body: { message: "Gone" } });
-});
-
-Given(
-  "way A reads {int} Actions minutes and {int} GB-hours of storage in this month's usage",
-  function (this: Dashboard, minutes: number, gbHours: number) {
-    this.github.answers.A.set(usagePath, {
-      status: 200,
-      body: {
-        usageItems: [
-          { product: "Actions", sku: "Actions Linux", unitType: "Minutes", quantity: minutes - 10 },
-          { product: "actions", sku: "Actions macOS", unitType: "minutes", quantity: 10 },
-          { product: "Packages", sku: "Packages storage", unitType: "GigabyteHours", quantity: gbHours },
-          { product: "Copilot", unitType: "UserMonths", quantity: 3 },
-        ],
-      },
-    });
-  },
-);
 
 // What they do
 When("a visitor opens the dashboard", async function (this: Dashboard) {
@@ -194,8 +199,8 @@ Then("the field {string} was read by {string}", function (this: Dashboard, label
     `${label} was not read by ${by}: ${fieldRow(this, label)}`,
   );
 });
-Then("the page shows Actions minutes as {string}", function (this: Dashboard, amounts: string) {
-  assert.ok(this.text.includes(`Actions minutes this month ${amounts.replace(" of ", " of ")}`), this.text);
+Then("the page shows {string} as {string}", function (this: Dashboard, label: string, value: string) {
+  assert.ok(this.text.includes(`${label} ${value} `), `"${label}" is not "${value}":\n${this.text}`);
 });
 Then("the diagnostics list {string} for both ways", function (this: Dashboard, endpoint: string) {
   const path = endpoint.replace("{org}", "Visit-ee");
@@ -204,7 +209,7 @@ Then("the diagnostics list {string} for both ways", function (this: Dashboard, e
 });
 Then("the installation token was used only for way A calls", function (this: Dashboard) {
   const withToken = this.github.seen.filter((s) => s.auth === `token ${INSTALL_TOKEN}`);
-  assert.equal(withToken.length, 5);
+  assert.equal(withToken.length, 3);
   assert.ok(withToken.every((s) => !s.path.startsWith("/user")));
 });
 Then("GitHub was not asked about {string}", function (this: Dashboard, path: string) {

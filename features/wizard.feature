@@ -28,39 +28,50 @@ Feature: Step 1 of the wizard: link an org and read what the reader app may see
   Scenario: Each field is read both ways, and the diagnostics say which worked
     Given the reader app is installed on "Visit-ee"
     And way A reads the org as plan "free" with 2FA required
-    And way A reads the legacy Actions billing as 1240 of 2000 minutes
-    And way A reads the legacy storage billing as 0.2 GB
+    And way A reads this month's summary as 1240 Actions minutes, 0 billed
     And way B is refused the org's billing with HTTP 403
     When they open the page "/wizard?org=Visit-ee"
     Then the page says "What we read from Visit-ee"
     And the field "GitHub plan" was read by "A and B"
-    And the field "Actions minutes used this month" was read by "A only"
-    And the field "Packages and Actions storage used (GB)" was read by "A only"
-    And the field "Actions minutes included" was read by "A only"
+    And the field "Actions minutes this month, all repos" was read by "A only"
+    And the field "Actions minutes billed this month" was read by "A only"
+    And the field "Actions minutes included for private repos" was read by "from plan"
     And the field "Rulesets on private repos" was read by "from plan"
-    And the page shows Actions minutes as "1,240 of 2,000"
+    And the page shows "Actions minutes this month, all repos" as "1,240"
+    And the page shows "Actions minutes billed this month" as "0"
+    And the page says "private repos get 2,000 minutes a month"
     And the page says "Not on this plan"
-    And the diagnostics list "GET /organizations/{org}/settings/billing/usage" for both ways
+    And the diagnostics list "GET /organizations/{org}/settings/billing/usage/summary" for both ways
     And the diagnostics list "GET /orgs/{org}/rulesets" for both ways
+    And GitHub was not asked about "/orgs/Visit-ee/settings/billing"
     And the installation token was used only for way A calls
 
-  Scenario: With only enhanced billing, minutes come from usage items and the limit from the plan
+  Scenario: Minutes on public repos count as used, not against the private allowance
     Given the reader app is installed on "Visit-ee"
     And way A reads the org as plan "team" with 2FA not required
-    And way A's legacy billing endpoints answer HTTP 410
-    And way A reads 90 Actions minutes and 720 GB-hours of storage in this month's usage
+    And way A reads this month's summary as 28858 Actions minutes, 0 billed, over three runners
+    And way A reads this month's storage as 0.389 GB-hours, 0.001 billed
     When they open the page "/wizard?org=Visit-ee"
-    Then the page shows Actions minutes as "90 of 3,000"
-    And the field "Actions minutes used this month" was read by "A only"
-    And the field "Actions minutes included" was read by "from plan"
-    And the page says "GitHub's published included minutes for plan team"
+    Then the page shows "Actions minutes this month, all repos" as "28,858"
+    And the page shows "Actions minutes billed this month" as "0"
+    And the page says "private repos get 3,000 minutes a month"
+    And the page does not say "28,858 of"
+    And the page does not say "GitHub is billing"
+    And the page shows "Storage billed this month" as "0.001 GB-hours"
     And the page does not say "Not on this plan"
+
+  Scenario: Billed minutes are said plainly
+    Given the reader app is installed on "Visit-ee"
+    And way A reads the org as plan "free" with 2FA required
+    And way A reads this month's summary as 2500 Actions minutes, 500 billed
+    When they open the page "/wizard?org=Visit-ee"
+    Then the page says "GitHub is billing 500 Actions minutes this month"
 
   Scenario: When neither way reads billing, the page says so
     Given the reader app is installed on "Visit-ee"
     When they open the page "/wizard?org=Visit-ee"
     Then the page says "Actions minutes: not readable either way"
-    And the field "Actions minutes used this month" was read by "neither"
+    And the field "Actions minutes this month, all repos" was read by "neither"
 
   Scenario: A name that is not an org's is refused without asking GitHub
     When they open the page "/wizard?org=../app"
