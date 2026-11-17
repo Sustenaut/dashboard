@@ -28,8 +28,8 @@ in_bitwarden() { ./with-secrets sh -c "test -n \"\${$(tr 'a-z-' 'A-Z_' <<<"$1"):
 step "0. This checkout is main"
 git fetch -q origin main
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "   HEAD is not origin/main: run git latest first."; exit 1; }
-[ -f ../shared-infra/pubkit.json ] || { echo "   ../shared-infra is missing: the walk reads its hosting block."; exit 1; }
-grep -q '"dashboard"' ../shared-infra/pubkit.json || { echo "   ../shared-infra has no dashboard site yet: merge and apply its DNS PR, then git latest there."; exit 1; }
+[ -f ../shared-infra/pubrules.json ] || { echo "   ../shared-infra is missing: the walk reads its hosting block."; exit 1; }
+grep -q '"dashboard"' ../shared-infra/pubrules.json || { echo "   ../shared-infra has no dashboard site yet: merge and apply its DNS PR, then git latest there."; exit 1; }
 
 step "1. The GitHub App and its OAuth client, in Bitwarden (dashboard-* secrets)"
 if in_bitwarden dashboard-app-id && in_bitwarden dashboard-app-key && in_bitwarden dashboard-client-id \
@@ -49,7 +49,7 @@ fi
 step "2. The deploy walk: session secret, Secret dashboard-secrets, DEPLOY_DASHBOARD, rollout"
 echo "   It prints its plan and waits for a typed yes before it changes anything."
 ask "Run the walk?"
-./with-secrets ./pubdeploy walk --fulfil --server sustenaut --zones ../shared-infra/pubkit.json
+./with-secrets ./pubdeploy walk --fulfil --server sustenaut --zones ../shared-infra/pubrules.json
 
 step "3. Try it"
 echo "   Open https://dashboard.sustenaut.eu , sign in with GitHub, choose Add project, pick Visit-ee"

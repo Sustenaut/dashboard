@@ -1,5 +1,5 @@
 // What the server needs, from its environment: in the cluster, the Secret dashboard-secrets
-// (k8s/app.yaml), which the deploy walk fills from Bitwarden (pubkit.json's deploy block).
+// (k8s/app.yaml), which the deploy walk fills from Bitwarden (pubrules.json's deploy block).
 export type Config = {
   /** Where people reach the dashboard, e.g. https://dashboard.sustenaut.eu: the OAuth callback is under it. */
   publicUrl: string;

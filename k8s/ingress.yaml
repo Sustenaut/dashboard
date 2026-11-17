@@ -1,6 +1,6 @@
 # dashboard.sustenaut.eu through the server's shared Traefik, with a Let's Encrypt certificate
 # (resolver "letsencrypt", shared-infra's infra/cloud-init). The name answers here once
-# shared-infra's pubkit.json lists the site (hosting.sites.dashboard) and its apply has run.
+# shared-infra's pubrules.json lists the site (hosting.sites.dashboard) and its apply has run.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

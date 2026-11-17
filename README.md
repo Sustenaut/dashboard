@@ -67,9 +67,9 @@ more) and, optionally, `DASHBOARD_PUBLIC_URL`, `GITHUB_API`, `GITHUB_WEB` and `P
 `.github/workflows/deploy.yml` builds `ghcr.io/sustenaut/dashboard` (public: the bundled
 server, CSS and fonts, no key) on each merge to main once CI has passed, and applies `k8s/` to
 namespace `dashboard` on the Sustenaut k3s server once `DEPLOY_DASHBOARD` is on.
-dashboard.sustenaut.eu's DNS record is Sustenaut/shared-infra's (`pubkit.json`, hosting sites).
+dashboard.sustenaut.eu's DNS record is Sustenaut/shared-infra's (`pubrules.json`, hosting sites).
 
-pubkit.json's `deploy` block lists the rest, and `scripts/go-live.sh` takes it live once:
+pubrules.json's `deploy` block lists the rest, and `scripts/go-live.sh` takes it live once:
 
 1. `./pubsec github-app create github-app/reader-test.json` makes the app and writes
    `dashboard-app-id`, `dashboard-app-key`, `dashboard-installation-id`, `dashboard-client-id`
@@ -78,4 +78,4 @@ pubkit.json's `deploy` block lists the rest, and `scripts/go-live.sh` takes it l
 2. The deploy walk generates `dashboard-session-secret`, makes the Secret `dashboard-secrets`,
    turns `DEPLOY_DASHBOARD` on and waits for the rollout and `/healthz`.
 
-Branch protection is `./pubkit protect Sustenaut/dashboard`.
+Branch protection is `./pubrules protect Sustenaut/dashboard`.
