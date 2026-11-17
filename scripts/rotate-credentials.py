@@ -1,5 +1,5 @@
 """Replaces the reader app's private key and its OAuth client secret in Bitwarden, after GitHub
-has accepted each. Run by scripts/rotate-credentials.sh under the pubsec wheel pubkit.json pins.
+has accepted each. Run by scripts/rotate-credentials.sh under the pubsec wheel pubrules.json pins.
 
 The key is read from the .pem file GitHub downloaded (its path is asked for; the key is never
 printed), and checked by signing the app's JWT with it and asking GitHub for the app. The client

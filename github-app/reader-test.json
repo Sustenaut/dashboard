@@ -19,7 +19,7 @@
     "members": "read"
   },
   "default_events": [],
-  "pubkit": {
+  "pubrules": {
     "org": "Sustenaut",
     "bitwarden_project": "Sustenaut",
     "secret_prefix": "dashboard",

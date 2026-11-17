@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   deploy:
-    uses: Sustenaut/pubdeploy/.github/workflows/k8s-deploy.yml@6bce402d11eae5a19fc112ce7e62641e2ed3a933 # v0.4.3
+    uses: Sustenaut/pubdeploy/.github/workflows/k8s-deploy.yml@fc34f05c790732a1ea831d896e557e9f816cba50 # v0.5.0
     with:
       image: ghcr.io/sustenaut/dashboard
       deploys: k8s dashboard DEPLOY_DASHBOARD

@@ -28,8 +28,8 @@ case "${1:-}" in
   *) echo "usage: scripts/rotate-credentials.sh [--secret-only]" >&2; exit 2 ;;
 esac
 echo "== 1. The new credentials, checked with GitHub, into Bitwarden"
-version=$(sed -n 's|.*/pubsec/releases/download/v\([0-9.]*\)/pubsec-.*|\1|p' pubkit.json | head -n 1)
-wheel=$(find "${XDG_CACHE_HOME:-$HOME/.cache}/pubkit/providers" -name "pubsec-$version-py3-none-any.whl" | head -n 1)
+version=$(sed -n 's|.*/pubsec/releases/download/v\([0-9.]*\)/pubsec-.*|\1|p' pubrules.json | head -n 1)
+wheel=$(find "${XDG_CACHE_HOME:-$HOME/.cache}/pubrules/providers" -name "pubsec-$version-py3-none-any.whl" | head -n 1)
 [[ -n "$wheel" ]] || { echo "   pubsec $version is not in the cache: run ./pubdeploy types once, then again."; exit 1; }
 ./with-secrets uvx --from "$wheel" python scripts/rotate-credentials.py "$@"
 
@@ -38,7 +38,7 @@ echo "   This deletes the Secret, then the deploy walk makes it and restarts the
 echo "   down for about a minute. The walk prints its plan and waits for a typed yes."
 ask "Go on?"
 ssh -o BatchMode=yes root@sustenaut "k3s kubectl -n dashboard delete secret dashboard-secrets --ignore-not-found"
-./with-secrets ./pubdeploy walk --fulfil --server sustenaut --zones ../shared-infra/pubkit.json
+./with-secrets ./pubdeploy walk --fulfil --server sustenaut --zones ../shared-infra/pubrules.json
 
 echo "== 3. Clean up"
 if [[ "${1:-}" == --secret-only ]]; then
