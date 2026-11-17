@@ -19,7 +19,8 @@
       "paths": [
         ".github/workflows/deploy.yml",
         "k8s/app.yaml",
-        "src/config.ts"
+        "src/config.ts",
+        "scripts/rotate-credentials.py"
       ],
       "mode": "required"
     },
