@@ -260,8 +260,8 @@ pubdeploy @ https://github.com/Sustenaut/pubdeploy/releases/download/v0.4.3/pubd
     --hash=sha256:acec4f9e914c58ab0ed29aced6096b2b55262384f9dd4865d02fcb8cb3f8b3be
 pubkit @ https://github.com/Sustenaut/pubkit/releases/download/v0.41.1/pubkit-0.41.1-py3-none-any.whl \
     --hash=sha256:2806ab70b2b64b720f13df5499ea4f7effadf7dda757029fec4e6dec37ecd8d7
-pubsec @ https://github.com/Sustenaut/pubsec/releases/download/v0.2.3/pubsec-0.2.3-py3-none-any.whl \
-    --hash=sha256:4a0b9435ff111565265f330fa3a1642b59562d77b5d1806c1bfecfe83e63b106
+pubsec @ https://github.com/Sustenaut/pubsec/releases/download/v0.2.4/pubsec-0.2.4-py3-none-any.whl \
+    --hash=sha256:c3a51d4165d7180c9808a16fef927ee8d6e5beb1c070da02619d93b0674c636d
 Pygments==2.21.0 \
     --hash=sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9 \
     --hash=sha256:610ca751c9bc2492b38eb9a38a7fbc93edbbb2d7182edaf34e66ae493dee5c8c

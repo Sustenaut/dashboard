@@ -9,4 +9,4 @@ hypothesis==6.170.5
 pubkit @ https://github.com/Sustenaut/pubkit/releases/download/v0.41.1/pubkit-0.41.1-py3-none-any.whl
 # deploy.providers' packages, whose need types `pubkit sync --check` reads:
 pubdeploy @ https://github.com/Sustenaut/pubdeploy/releases/download/v0.4.3/pubdeploy-0.4.3-py3-none-any.whl
-pubsec @ https://github.com/Sustenaut/pubsec/releases/download/v0.2.3/pubsec-0.2.3-py3-none-any.whl
+pubsec @ https://github.com/Sustenaut/pubsec/releases/download/v0.2.4/pubsec-0.2.4-py3-none-any.whl

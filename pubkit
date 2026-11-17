@@ -49,7 +49,7 @@ provider() {
   with+=(--with "$fetched")
 }
 provider https://github.com/Sustenaut/pubdeploy/releases/download/v0.4.3/pubdeploy-0.4.3-py3-none-any.whl acec4f9e914c58ab0ed29aced6096b2b55262384f9dd4865d02fcb8cb3f8b3be
-provider https://github.com/Sustenaut/pubsec/releases/download/v0.2.3/pubsec-0.2.3-py3-none-any.whl 4a0b9435ff111565265f330fa3a1642b59562d77b5d1806c1bfecfe83e63b106
+provider https://github.com/Sustenaut/pubsec/releases/download/v0.2.4/pubsec-0.2.4-py3-none-any.whl c3a51d4165d7180c9808a16fef927ee8d6e5beb1c070da02619d93b0674c636d
 
 # pubkit's own wheel, by the sha256 tests/requirements.lock pins, from the mirror when GitHub fails.
 from="https://github.com/Sustenaut/pubkit/releases/download/v0.41.1/pubkit-0.41.1-py3-none-any.whl"
