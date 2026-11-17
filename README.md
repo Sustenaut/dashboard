@@ -14,12 +14,17 @@ infrastructure, account and devices, wizard steps 2 and 3) is layout only and ta
 
 ## How it reads
 
-| Field | Endpoints tried | Fallback |
+| Field | Endpoint | Note |
 |---|---|---|
-| Plan, 2FA required | `GET /orgs/{org}` (`plan.name`, `two_factor_requirement_enabled`) | none |
-| Actions minutes used / included | legacy `GET /orgs/{org}/settings/billing/actions`; enhanced `GET /organizations/{org}/settings/billing/usage` (this month's Actions items in minutes) | included minutes from the plan's published limit |
-| Storage used / included | legacy `GET /orgs/{org}/settings/billing/shared-storage`; enhanced usage (GB-hours over the hours so far) | included storage from the plan |
-| Rulesets on private repos | the plan (Free: no), with `GET /orgs/{org}/rulesets`'s status as evidence | none |
+| Plan, 2FA required | `GET /orgs/{org}` (`plan.name`, `two_factor_requirement_enabled`) | |
+| Actions minutes this month, and billed | `GET /organizations/{org}/settings/billing/usage/summary` | gross minutes (all repos, public ones free) and net minutes (what GitHub bills) |
+| Storage this month, and billed | the same summary | gross GB-hours over the hours so far (an average in GB), and net GB-hours |
+| Included minutes and storage | the plan's published limits | for private repos; no endpoint gives them |
+| Rulesets on private repos | the plan (Free: no) | `GET /orgs/{org}/rulesets` answers 403 to the app even on Team, so its status is shown as evidence only |
+
+Gross minutes are not compared with the included amount: they count public repos, which are free, and
+telling private from public would take a repository permission the app does not have. The legacy
+`…/settings/billing/actions` and `…/shared-storage` endpoints answer 410 and are not called.
 
 Each field is read **A**, with the reader app's installation token, and **B**, with the
 user-to-server token from signing in through the same app. The Diagnostics table shows, per

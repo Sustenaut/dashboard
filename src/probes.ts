@@ -14,17 +14,27 @@ export type Reading = {
   note?: string;
 };
 export type FieldKey =
-  "plan" | "twoFactor" | "minutesUsed" | "minutesIncluded" | "storageUsed" | "storageIncluded" | "rulesets";
+  | "plan"
+  | "twoFactor"
+  | "minutesUsed"
+  | "minutesBilled"
+  | "minutesIncluded"
+  | "storageUsed"
+  | "storageBilled"
+  | "storageIncluded"
+  | "rulesets";
 export type Field = { key: FieldKey; label: string; readings: Partial<Record<Way, Reading>> };
 export type Report = { org: string; fields: Field[]; calls: Call[] };
 
 export const LABELS: Record<FieldKey, string> = {
   plan: "GitHub plan",
   twoFactor: "2FA required for members",
-  minutesUsed: "Actions minutes used this month",
-  minutesIncluded: "Actions minutes included",
-  storageUsed: "Packages and Actions storage used (GB)",
-  storageIncluded: "Packages and Actions storage included (GB)",
+  minutesUsed: "Actions minutes this month, all repos",
+  minutesBilled: "Actions minutes billed this month",
+  minutesIncluded: "Actions minutes included for private repos",
+  storageUsed: "Packages and Actions storage this month (GB, average)",
+  storageBilled: "Packages and Actions storage billed this month (GB-hours)",
+  storageIncluded: "Packages and Actions storage included for private repos (GB)",
   rulesets: "Rulesets on private repos",
 };
 
@@ -44,15 +54,20 @@ const note = (a: Answer): string => {
 
 const round = (n: number, places = 2) => Math.round(n * 10 ** places) / 10 ** places;
 
-/** The month's usage items that match a product and unit (case and spacing aside). */
-function usageSum(items: any[], products: string[], unit: string): number {
-  const norm = (s: unknown) =>
-    String(s ?? "")
+/** The month's summary items for a product and unit (case and spacing aside), added up. GitHub's
+ *  summary gives each SKU's gross quantity (all use, public repos included), the part its
+ *  discounts cover (public repos, the plan's included amount) and the net part that is billed. */
+function summed(items: any[], products: string[], unit: string): { gross: number; net: number } {
+  const norm = (v: unknown) =>
+    String(v ?? "")
       .toLowerCase()
       .replace(/[\s_-]/g, "");
   return items
     .filter((i) => products.includes(norm(i?.product)) && norm(i?.unitType) === unit)
-    .reduce((sum, i) => sum + (Number(i?.quantity) || 0), 0);
+    .reduce(
+      (t, i) => ({ gross: t.gross + (Number(i?.grossQuantity) || 0), net: t.net + (Number(i?.netQuantity) || 0) }),
+      { gross: 0, net: 0 },
+    );
 }
 
 export async function readWay(
@@ -64,11 +79,9 @@ export async function readWay(
   const o = encodeURIComponent(org);
   const year = now.getUTCFullYear();
   const month = now.getUTCMonth() + 1;
-  const [orgA, usage, actions, storage, rulesets] = await Promise.all([
+  const [orgA, summary, rulesets] = await Promise.all([
     gh.call("GET", `/orgs/${o}`, auth),
-    gh.call("GET", `/organizations/${o}/settings/billing/usage?year=${year}&month=${month}`, auth),
-    gh.call("GET", `/orgs/${o}/settings/billing/actions`, auth),
-    gh.call("GET", `/orgs/${o}/settings/billing/shared-storage`, auth),
+    gh.call("GET", `/organizations/${o}/settings/billing/usage/summary?year=${year}&month=${month}`, auth),
     gh.call("GET", `/orgs/${o}/rulesets`, auth),
   ]);
   const ok = (a: Answer) => a.status === 200 && a.body && typeof a.body === "object";
@@ -88,8 +101,8 @@ export async function readWay(
         ? { source: "plan", note: `no published ${what} for plan ${planName}` }
         : { value, source: "plan", note: `GitHub's published ${what} for plan ${planName}` };
 
-  const usageItems: any[] | undefined =
-    ok(usage) && Array.isArray(usage.body.usageItems) ? usage.body.usageItems : undefined;
+  const items: any[] | undefined =
+    ok(summary) && Array.isArray(summary.body.usageItems) ? summary.body.usageItems : undefined;
 
   const plan: Reading = planName
     ? { value: planName, source: orgA.endpoint, status: orgA.status }
@@ -101,47 +114,18 @@ export async function readWay(
       ? { value: tfa, source: orgA.endpoint, status: orgA.status }
       : failed(orgA, ok(orgA) ? "two_factor_requirement_enabled was hidden" : "");
 
-  let minutesUsed: Reading;
-  let minutesIncluded: Reading;
-  if (ok(actions) && typeof actions.body.total_minutes_used === "number") {
-    minutesUsed = { value: actions.body.total_minutes_used, source: actions.endpoint, status: 200 };
-    minutesIncluded =
-      typeof actions.body.included_minutes === "number"
-        ? { value: actions.body.included_minutes, source: actions.endpoint, status: 200 }
-        : fromPlan(limits?.minutes, "included minutes");
-  } else if (usageItems) {
-    minutesUsed = {
-      value: round(usageSum(usageItems, ["actions"], "minutes"), 0),
-      source: usage.endpoint,
-      status: 200,
-      note: `the month's usage items, product Actions, unit minutes (legacy: HTTP ${actions.status})`,
-    };
-    minutesIncluded = fromPlan(limits?.minutes, "included minutes");
-  } else {
-    minutesUsed = {
-      ...failed(actions),
-      note: `legacy HTTP ${actions.status}, enhanced HTTP ${usage.status}: ${note(usage) || note(actions)}`,
-    };
-    minutesIncluded = fromPlan(limits?.minutes, "included minutes");
-  }
-
-  let storageUsed: Reading;
-  if (ok(storage) && typeof storage.body.estimated_storage_for_month === "number") {
-    storageUsed = { value: round(storage.body.estimated_storage_for_month), source: storage.endpoint, status: 200 };
-  } else if (usageItems) {
-    const hours = Math.max(1, (now.getTime() - Date.UTC(year, month - 1, 1)) / 3_600_000);
-    storageUsed = {
-      value: round(usageSum(usageItems, ["actions", "packages"], "gigabytehours") / hours),
-      source: usage.endpoint,
-      status: 200,
-      note: `GB-hours this month over ${Math.round(hours)} hours (legacy: HTTP ${storage.status})`,
-    };
-  } else {
-    storageUsed = {
-      ...failed(storage),
-      note: `legacy HTTP ${storage.status}, enhanced HTTP ${usage.status}: ${note(usage) || note(storage)}`,
-    };
-  }
+  const read = (value: number, what: string): Reading => ({ value, source: summary.endpoint, status: 200, note: what });
+  const notRead = (): Reading => failed(summary);
+  const minutes = items && summed(items, ["actions"], "minutes");
+  const storage = items && summed(items, ["actions", "packages"], "gigabytehours");
+  const hours = Math.max(1, (now.getTime() - Date.UTC(year, month - 1, 1)) / 3_600_000);
+  const minutesUsed = minutes ? read(round(minutes.gross, 0), "gross minutes, public repos included") : notRead();
+  const minutesBilled = minutes ? read(round(minutes.net, 0), "net minutes, what GitHub bills") : notRead();
+  const minutesIncluded = fromPlan(limits?.minutes, "included minutes");
+  const storageUsed = storage
+    ? read(round(storage.gross / hours), `gross GB-hours over the ${Math.round(hours)} hours so far`)
+    : notRead();
+  const storageBilled = storage ? read(round(storage.net, 3), "net GB-hours, what GitHub bills") : notRead();
   const storageIncluded = fromPlan(limits?.storageGb, "included storage");
 
   const rules = fromPlan(limits?.privateRulesets, "ruleset support on private repositories");
@@ -155,12 +139,14 @@ export async function readWay(
       plan,
       twoFactor,
       minutesUsed,
+      minutesBilled,
       minutesIncluded,
       storageUsed,
+      storageBilled,
       storageIncluded,
       rulesets: rulesetsReading,
     },
-    calls: [orgA, usage, actions, storage, rulesets],
+    calls: [orgA, summary, rulesets],
   };
 }
 
