@@ -9,6 +9,10 @@ Given("a person who has signed in", async function (this: Dashboard) {
   assert.ok(this.jar.has("dash_session"), "signing in gave no session");
 });
 
+Given("a visitor who has started signing in", async function (this: Dashboard) {
+  await this.request("GET", "/auth/login");
+});
+
 Given(
   "they own the org {string} and are a member of {string}",
   function (this: Dashboard, owned: string, member: string) {
@@ -89,51 +93,22 @@ Given("way B is refused the org's billing with HTTP {int}", function (this: Dash
   this.github.answers.B.set(summaryPath, { status, body: { message: "Resource not accessible by integration" } });
 });
 
-// What they do
-When("a visitor opens the dashboard", async function (this: Dashboard) {
-  await this.request("GET", "/");
-});
-When("they open the dashboard", async function (this: Dashboard) {
-  await this.request("GET", "/");
-});
-When("a visitor opens the page {string}", async function (this: Dashboard, path: string) {
-  await this.request("GET", path);
-});
-When("they open the page {string}", async function (this: Dashboard, path: string) {
-  await this.request("GET", path);
-});
-When("they send a POST to {string}", async function (this: Dashboard, path: string) {
-  await this.request("POST", path);
-});
-When("a visitor starts signing in", async function (this: Dashboard) {
-  await this.request("GET", "/auth/login");
-});
-
-const stateFrom = (w: Dashboard) => new URL(w.res!.headers.get("location")!).searchParams.get("state");
-let lastState: string | null = null;
-
+// What they do: requests are pubtest's (I GET, I send); these are the ones it has no words for.
 When("GitHub sends them back with a good code and the same state", async function (this: Dashboard) {
-  lastState = stateFrom(this);
-  await this.request("GET", `/auth/callback?code=good-code&state=${lastState}`);
+  await this.send("GET", `/auth/callback?code=good-code&state=${this.state}`);
 });
 When("GitHub sends them back with a good code and another state", async function (this: Dashboard) {
-  await this.request("GET", "/auth/callback?code=good-code&state=someone-elses");
+  await this.send("GET", "/auth/callback?code=good-code&state=someone-elses");
 });
 When("GitHub sends them back with a bad code and the same state", async function (this: Dashboard) {
-  await this.request("GET", `/auth/callback?code=bad-code&state=${stateFrom(this)}`);
+  await this.send("GET", `/auth/callback?code=bad-code&state=${this.state}`);
 });
 When("their session cookie is changed by one character", function (this: Dashboard) {
   const v = this.jar.get("dash_session")!;
-  this.jar.set(
-    "dash_session",
-    (v[5] === "A" ? "B" : "A").padStart(1) && v.slice(0, 5) + (v[5] === "A" ? "B" : "A") + v.slice(6),
-  );
+  this.jar.set("dash_session", v.slice(0, 5) + (v[5] === "A" ? "B" : "A") + v.slice(6));
 });
 When("nine hours pass", function (this: Dashboard) {
   this.now = new Date(this.now.getTime() + 9 * 3600_000);
-});
-When("they sign out", async function (this: Dashboard) {
-  await this.request("POST", "/auth/logout");
 });
 
 // What they see
@@ -143,21 +118,8 @@ Then("the page says {string}", function (this: Dashboard, text: string) {
 Then("the page does not say {string}", function (this: Dashboard, text: string) {
   assert.ok(!this.text.includes(text), `the page says "${text}"`);
 });
-Then("the page links to {string}", function (this: Dashboard, href: string) {
-  assert.ok(this.page.includes(`href="${href.replace(/&/g, "&amp;")}"`), `no link to ${href}`);
-});
 Then("the page is tagged {string}", function (this: Dashboard, tag: string) {
   assert.match(this.page, new RegExp(`<span class="[^"]*rounded-full[^"]*">(<span[^>]*></span>)?${tag}</span>`));
-});
-Then("the page has no script", function (this: Dashboard) {
-  assert.ok(!/<script/i.test(this.page));
-});
-Then("the answer is HTTP {int}", function (this: Dashboard, status: number) {
-  assert.equal(this.res!.status, status);
-});
-Then("they are sent to {string}", function (this: Dashboard, to: string) {
-  assert.equal(this.res!.status, 303);
-  assert.equal(this.res!.headers.get("location"), to);
 });
 Then("they are sent to GitHub's authorize page with the dashboard's client and callback", function (this: Dashboard) {
   const to = new URL(this.res!.headers.get("location")!);
@@ -214,10 +176,4 @@ Then("the installation token was used only for way A calls", function (this: Das
 });
 Then("GitHub was not asked about {string}", function (this: Dashboard, path: string) {
   assert.ok(!this.github.seen.some((s) => s.path.startsWith(path)));
-});
-Then("the answer's content security policy forbids scripts and framing", function (this: Dashboard) {
-  const csp = this.res!.headers.get("content-security-policy")!;
-  assert.ok(
-    csp.includes("default-src 'none'") && csp.includes("frame-ancestors 'none'") && !csp.includes("script-src"),
-  );
 });
