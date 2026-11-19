@@ -1,6 +1,9 @@
 // Each scenario: a fake GitHub, the dashboard's handler on a local port in front of it, and a
-// browser of sorts that keeps cookies and does not follow redirects.
+// browser of sorts that keeps cookies and does not follow redirects. pubtest's HTTP steps send
+// their requests through that browser.
+import * as cucumber from "@cucumber/cucumber";
 import { After, Before, setWorldConstructor, World } from "@cucumber/cucumber";
+import { Answer, register, Result } from "@sustenaut/pubtest";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createHandler } from "../../src/server";
@@ -16,6 +19,7 @@ export class Dashboard extends World {
   res?: Response;
   page = "";
   now = new Date("2026-11-16T12:00:00Z");
+  declare pubtest: { acting(): void; ran(r: unknown): void; answer: Answer | null; client: unknown };
 
   async start() {
     await this.github.start();
@@ -44,9 +48,15 @@ export class Dashboard extends World {
     await this.github.stop();
   }
 
-  async request(method: string, path: string) {
+  /** Sends a request with the cookies the browser holds, and keeps those it is given. */
+  async request(method: string, path: string, headers: Record<string, string> = {}, body?: string) {
     const cookie = [...this.jar].map(([k, v]) => `${k}=${v}`).join("; ");
-    this.res = await fetch(this.base + path, { method, redirect: "manual", headers: cookie ? { cookie } : {} });
+    this.res = await fetch(this.base + path, {
+      method,
+      body,
+      redirect: "manual",
+      headers: cookie ? { ...headers, cookie } : headers,
+    });
     for (const line of this.res.headers.getSetCookie()) {
       const [pair, ...attrs] = line.split(";");
       const [k, v] = [pair.slice(0, pair.indexOf("=")), pair.slice(pair.indexOf("=") + 1)];
@@ -54,7 +64,14 @@ export class Dashboard extends World {
       else this.jar.set(k, v);
     }
     this.page = await this.res.text();
-    return this.res;
+    return new Answer(this.res.status, Object.fromEntries(this.res.headers.entries()), this.page);
+  }
+
+  /** A When of the suite's own that sends a request: its answer is the one pubtest's Thens read. */
+  async send(method: string, path: string) {
+    this.pubtest.acting();
+    this.pubtest.answer = await this.request(method, path);
+    this.pubtest.ran(new Result({ value: this.pubtest.answer }));
   }
 
   /** The page's text, tags dropped, as a reader sees it. */
@@ -66,11 +83,15 @@ export class Dashboard extends World {
       .replace(/\s+/g, " ");
   }
 
+  /** The state GitHub's authorize page was sent in the last redirect. */
+  get state() {
+    return new URL(this.res!.headers.get("location")!).searchParams.get("state");
+  }
+
   /** Signs in as the fake GitHub's user, through the real OAuth round trip. */
   async signIn() {
     await this.request("GET", "/auth/login");
-    const state = new URL(this.res!.headers.get("location")!).searchParams.get("state");
-    await this.request("GET", `/auth/callback?code=good-code&state=${state}`);
+    await this.request("GET", `/auth/callback?code=good-code&state=${this.state}`);
   }
 }
 
@@ -80,4 +101,8 @@ Before(async function (this: Dashboard) {
 });
 After(async function (this: Dashboard) {
   await this.stop();
+});
+register(cucumber, {
+  client: (world: Dashboard) => (method: string, path: string, headers: Record<string, string>, body?: string) =>
+    world.request(method, path, headers, body),
 });
